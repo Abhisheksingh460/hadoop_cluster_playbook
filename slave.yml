@@ -1,5 +1,0 @@
-- hosts: master
-  tasks: 
-  - template:
-          src: "abhi.yml"
-          dest: "/root"
