@@ -1,0 +1,94 @@
+- hosts: all
+  vars:
+         - jdk_software: jdk-8u171-linux-x64.rpm
+         - hadoop_software: hadoop-1.2.1-1.x86_64.rpm
+          
+  tasks:
+
+  - name: "downloading jdk software ."
+    copy: 
+      src: "{{ jdk_software }}"
+      dest: "/home/ec2-user"
+    register: instjd
+ 
+  - name: "installing jdk software"
+    command: "rpm -i {{ jdk_software  }}"
+    when: instjd.changed != false 
+  
+  - name: "downloading hadoop software"
+    copy:
+      src: "{{ hadoop_software  }}"
+      dest: "/home/ec2-user"
+    when: instjd.changed != false 
+    register: insthd
+
+  - name: "installing hadoop software"
+    command: "rpm -i {{ hadoop_software }}  --force"
+    when: insthd.changed != false
+
+- hosts: master
+  vars:
+          - namenode_dir: /master
+          - port_no: "9001" 
+      
+  tasks: 
+  
+  - name: "creating namenode directory"
+    file: 
+      path: "{{ namenode_dir }}"
+      state: directory
+    register: dirchange
+
+  - name: "configuring (hdfs-site.xml)file in master(namenode)"
+    template: 
+      src: hdfs-site.xml
+      dest: "/etc/hadoop"
+
+  - name: "configuring (core-site.xml)file in master(namenode)"
+    template:
+      src: core-site.xml
+      dest: "/etc/hadoop" 
+  
+  - name: "formating namenode directory .."
+    shell: echo Y | hadoop namenode -format 
+    when: dirchange.changed != false
+    ignore_errors: yes
+
+  - name: "starting namenode services .."
+    shell: hadoop-daemon.sh start namenode
+    ignore_errors: yes
+    when: dirchange.changed != false
+ 
+- hosts: slave
+  vars:
+          - datanode_dir: /slave
+          - port_no: "9001"
+
+  tasks:
+
+  - name: "creating datanode directory"
+    file:
+      path: "{{ datanode_dir }}"
+      state: directory
+    register: dirchange
+
+  - name: "configuring (hdfs-site.xml)file in slave(datanode)"
+    template:
+      src: slavefiles/hdfs-site.xml
+      dest: "/etc/hadoop"  
+
+  - name: "configuring (core-site.xml)file in slave(datanode)"
+    template:
+      src: slavefiles/core-site.xml
+      dest: "/etc/hadoop"
+      
+  - name: "starting datanode services .."
+    shell: hadoop-daemon.sh start datanode
+    when: dirchange.changed != false
+    ignore_errors: yes
+  
+
+
+
+    
+
